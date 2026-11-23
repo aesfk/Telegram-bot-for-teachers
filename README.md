@@ -1,55 +1,30 @@
-# Telegram Бот для обучения с интервальными повторениями
+# Telegram Practice Bot for Teachers and Students
 
-Этот проект представляет собой Telegram-бота, предназначенного для помощи ученикам в решении задач по различным темам и типам. Бот использует систему интервальных повторений (на основе карточек Flashcard) для адаптации частоты появления задач в зависимости от успехов ученика. Учителя могут добавлять новые задачи, просматривать присланные учениками решения и управлять контентом.
+A Python Telegram bot for topic-based practice. Teachers can enter problems, and students can solve them in chat, get immediate feedback, and submit their working for review. The bot uses pyTelegramBotAPI and MySQL.
 
-## Основные возможности
+## Practice workflow
 
-- **Роли**: Ученик и Учитель.
-- **Ученик**:
-  - Выбор темы и типа задач.
-  - Получение случайной задачи из выбранной категории.
-  - Ввод ответа и мгновенная проверка (сравнение строк без учёта регистра и лишних пробелов).
-  - Автоматическое изменение интервала повторения в зависимости от правильности ответов.
-  - Возможность отправить своё решение учителю, если ответ неправильный.
-  - Остановка тренировки командой `stop` и возврат к выбору темы.
-- **Учитель**:
-  - Добавление новых задач (текст, ответ, изображение, пошаговое решение).
-  - Просмотр решений, присланных учениками (команда `/solutions`).
-  - Очистка таблицы решений после отправки (в текущей версии — сразу после просмотра).
+- Use `/start` or `/help` to select the student or teacher workflow.
+- Students choose a topic and use `/run <topic>` to start practice. The bot checks text answers and updates a priority score for each problem type within the session. Send `stop` to return to topic selection.
+- Authorised teachers use `/document` to add a problem and `/solutions` to request student submissions. The prototype can store an optional image with a task.
 
-## Технологии
+## Data model
 
-- **Python 3.9+**
-- **pyTelegramBotAPI** (telebot) – библиотека для работы с Telegram Bot API.
-- **MySQL** – база данных для хранения задач, учеников и решений.
-- **Библиотека mysql-connector-python** – для подключения к MySQL.
+| Table | Purpose |
+| --- | --- |
+| `tasks` | Topics, problem types, prompts, answer strings, and optional attachments |
+| `pupils` | Student records and fields for practice scores by topic and problem type |
+| `solves` | Written solutions submitted for teacher review |
 
-## Структура базы данных
+## Local development
 
-Бот использует базу данных `train_brain` со следующими таблицами:
+The prototype is contained in [main.py](main.py). For a local demo, create a fresh Telegram test bot and a disposable MySQL database named `train_brain`. Update the script to read configuration from the environment, for example `TELEGRAM_BOT_TOKEN`, `TEACHER_IDS`, `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_DATABASE`. Export your local settings before starting the bot. The script attempts to create its tables at startup.
 
-### `tasks`
-Хранит задачи:
-- `prob_id` (INT, AUTO_INCREMENT PRIMARY KEY)
-- `topic_name` (VARCHAR(35)) – тема задачи.
-- `type_name` (VARCHAR(35)) – тип/категория задачи.
-- `prob_text` (TEXT) – условие задачи.
-- `prob_img` (BLOB) – изображение (опционально).
-- `prob_ans` (VARCHAR(30)) – правильный ответ.
-- `prob_solve` (TEXT) – решение (опционально).
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install pyTelegramBotAPI mysql-connector-python
+python main.py
+```
 
-### `pupils`
-Хранит статистику успеваемости каждого ученика по каждой теме и типу:
-- `pupil_id` (INT) – Telegram ID ученика.
-- `topic_name` (VARCHAR(35))
-- `type_name` (VARCHAR(35))
-- `type_interval` (FLOAT) – текущий интервал повторения.
-- `correct_count` (INT) – количество правильных ответов.
-- `incorrect_count` (INT) – количество неправильных ответов.
-
-### `solves`
-Временная таблица для решений, присланных учениками:
-- `pupil_id` (INT)
-- `pupil_name` (VARCHAR(35))
-- `prob_id` (INT)
-- `solve` (TEXT)
+Start with synthetic student accounts and text-only practice tasks. Score changes are held in memory during practice. The current `/solutions` handler drops the submissions table and attempts to recreate it after review, so use a disposable database for that workflow.
